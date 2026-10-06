@@ -17,9 +17,9 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --ignor
 # --- Image finale ---
 FROM php:8.2-apache
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libicu-dev libxml2-dev unzip default-mysql-client \
+        libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libxml2-dev unzip default-mysql-client \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo_mysql gd zip bcmath intl exif opcache \
+    && docker-php-ext-install -j2 pdo_mysql gd zip bcmath \
     && a2enmod rewrite headers \
     && rm -rf /var/lib/apt/lists/*
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
