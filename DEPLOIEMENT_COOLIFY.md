@@ -2,7 +2,7 @@
 
 ## 1. Créer la ressource
 Coolify → *New Resource* → *Public/Private Repository* → `larissabrou/vote`, branche de déploiement,
-**Build Pack : Docker Compose** (`docker-compose.yml`). Domaine à affecter au service `app` (port 80).
+**Build Pack : Docker Compose** (`docker-compose.yaml`). Domaine à affecter au service `app` (port 80).
 
 ## 2. Variables d'environnement (Coolify)
 | Variable | Valeur |
