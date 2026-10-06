@@ -2,12 +2,14 @@
 set -e
 cd /var/www/html
 
-# Attendre la base de données
+# Attendre la base de données (même pilote PDO que l'application)
 if [ -n "$DB_HOST" ]; then
   echo "Attente de la base $DB_HOST:${DB_PORT:-3306}..."
   i=0
-  until mysqladmin ping -h "$DB_HOST" -P "${DB_PORT:-3306}" -u "$DB_USERNAME" -p"$DB_PASSWORD" --silent 2>/dev/null; do
-    i=$((i+1)); [ $i -ge 60 ] && echo "Base injoignable" && exit 1
+  until ERR=$(php -r 'try { new PDO("mysql:host=".getenv("DB_HOST").";port=".(getenv("DB_PORT") ?: 3306).";dbname=".getenv("DB_DATABASE"), getenv("DB_USERNAME"), getenv("DB_PASSWORD")); } catch (Throwable $e) { fwrite(STDERR, $e->getMessage()); exit(1); }' 2>&1); do
+    i=$((i+1))
+    echo "  tentative $i: $ERR"
+    [ $i -ge 60 ] && echo "Base injoignable" && exit 1
     sleep 2
   done
 fi
