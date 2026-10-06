@@ -15,7 +15,7 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --ignore-platform-reqs
 
 # --- Image finale ---
-FROM php:8.2-apache
+FROM php:8.3-apache
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libxml2-dev unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
