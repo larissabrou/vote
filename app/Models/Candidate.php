@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Candidate extends Model
 {
@@ -27,6 +28,25 @@ class Candidate extends Model
     public function votes(): HasMany
     {
         return $this->hasMany(Vote::class)->where('is_null', false);
+    }
+
+    /** URL publique de la photo (public/election_assets/photos ou anciennement storage). */
+    public function getPhotoUrlAttribute(): ?string
+    {
+        if (!$this->photo) {
+            return null;
+        }
+        if (str_starts_with($this->photo, 'http://') || str_starts_with($this->photo, 'https://')) {
+            return $this->photo;
+        }
+        if (file_exists(public_path($this->photo))) {
+            return asset($this->photo);
+        }
+        if (Storage::disk('public')->exists($this->photo)) {
+            return Storage::url($this->photo);
+        }
+
+        return asset($this->photo);
     }
 
     public function getFullNameAttribute(): string

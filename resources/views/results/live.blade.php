@@ -75,7 +75,7 @@ function renderCandidates(candidates) {
         html += '<h3 class="text-lg font-bold text-center">' + position + '</h3></div>';
         html += '<div class="divide-y divide-gray-200">';
         byPosition[position].forEach(c => {
-            const photoUrl = c.photo ? (c.photo.startsWith('http') ? c.photo : (window.location.origin + '/public/' + c.photo.replace(/^\/+/, ''))) : '';
+            const photoUrl = c.photo_url || '';
             const photo = photoUrl ? '<img src="' + photoUrl + '" alt="" class="w-14 h-14 rounded-full object-cover shadow border-2 border-gray-200">' : '<div class="w-14 h-14 rounded-full bg-gray-300 flex items-center justify-center"><span class="text-xl">👤</span></div>';
             html += '<div class="p-4 flex flex-col sm:flex-row sm:items-center gap-3" data-candidate-id="' + c.id + '">';
             html += '<div class="flex items-center gap-3 flex-1">' + photo + '<div><h4 class="font-bold text-gray-900">' + c.name + '</h4></div></div>';

@@ -110,6 +110,7 @@ class ResultsController extends Controller
                 'name' => $candidate->full_name,
                 'position' => $candidate->position,
                 'photo' => $candidate->photo,
+                'photo_url' => $candidate->photo_url,
                 'votes' => $voteCount,
                 'total_voices' => (int) $voixPosition,
                 'percentage' => round($percentage, 2),
