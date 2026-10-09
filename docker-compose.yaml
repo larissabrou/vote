@@ -28,7 +28,10 @@ services:
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS}
       MAIL_FROM_NAME: "Vote System"
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      BILLING_ENABLED: ${BILLING_ENABLED:-false}
+      # Paiement des elections. "false" = creation et vote sans payer.
+      # Valeur litterale volontaire : avec ${BILLING_ENABLED:-false}, Coolify cree
+      # la variable dans son interface et l'avait mise a "true" toute seule.
+      BILLING_ENABLED: "false"
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
       AFRIBAPAY_ENABLED: ${AFRIBAPAY_ENABLED:-true}
     volumes:
