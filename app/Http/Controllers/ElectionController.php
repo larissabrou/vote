@@ -175,31 +175,6 @@ class ElectionController extends Controller
         return Excel::download(new VotantsTemplateExport(), 'modele_votants.xlsx');
     }
 
-    /**
-     * Envoie le lien de vote à chaque votant et note le résultat sur le votant.
-     * Retourne le nombre d'envois réussis ; les échecs restent rattrapables
-     * via « Renvoyer les liens ».
-     */
-    private function sendVotingLinksTo($voters): int
-    {
-        $sent = 0;
-        foreach ($voters as $voter) {
-            try {
-                $this->emailService->sendVotingLink($voter);
-                $voter->email_sent_at = now();
-                $voter->email_error = null;
-                $sent++;
-            } catch (\Exception $e) {
-                \Log::warning("Erreur envoi email votant {$voter->email}: " . $e->getMessage());
-                $voter->email_sent_at = null;
-                $voter->email_error = $e->getMessage();
-            }
-            $voter->save();
-        }
-
-        return $sent;
-    }
-
     public function store(Request $request)
     {
         // Convertir les dates du format JJ/MM/AAAA (ex. 23/02/2026) vers Y-m-d
@@ -367,22 +342,21 @@ class ElectionController extends Controller
             $publicRegistrationUrl = URL::signedRoute('votants.inscription', $election);
             $importedFromExcel = ($request->input('voters_source', 'link') === 'excel') && ($result['votersCreated'] ?? 0) > 0;
 
-            // Paiement désactivé : l'élection est active d'office, les liens partent tout de suite.
+            // Paiement désactivé : l'élection est active d'office, mais les liens de vote
+            // ne partent pas tout seuls : l'administrateur déclenche l'envoi collectif.
             if (!config('billing.enabled')) {
                 if ($importedFromExcel) {
-                    $sent = $this->sendVotingLinksTo($election->voters);
-                    $election->emails_sent_at = now();
-                    $election->save();
-
-                    $failed = $result['votersCreated'] - $sent;
-                    $successMessage = 'Élection créée. ' . $result['votersCreated'] . ' votant(s) importé(s), '
-                        . $sent . ' lien(s) de vote envoyé(s).'
-                        . ($failed > 0 ? ' ' . $failed . ' envoi(s) en échec : utilisez le bouton « Renvoyer les liens ».' : '');
-                } else {
-                    $successMessage = 'Élection créée. Partagez le lien d\'inscription des votants : ' . $publicRegistrationUrl . '.';
+                    return redirect()->route('elections.electeurs', $election)->with(
+                        'success',
+                        'Élection créée. ' . $result['votersCreated'] . ' votant(s) importé(s). '
+                            . 'Aucun lien n’a encore été envoyé : utilisez le bouton d’envoi en masse ci-dessous quand vous êtes prêt.'
+                    );
                 }
 
-                return redirect()->route('elections.voir', $election)->with('success', $successMessage);
+                return redirect()->route('elections.voir', $election)->with(
+                    'success',
+                    'Élection créée. Partagez le lien d\'inscription des votants : ' . $publicRegistrationUrl . '.'
+                );
             }
 
             // Ne pas envoyer les emails ici : ils seront envoyés après paiement (activation)
@@ -487,6 +461,16 @@ class ElectionController extends Controller
                     ->count()
                 : 0;
 
+            // Votants qui n'ont encore reçu aucune tentative d'envoi.
+            $votersEmailPendingCount = $election->isActivated()
+                ? $election->voters()
+                    ->whereNull('email_sent_at')
+                    ->where(function ($q) {
+                        $q->whereNull('email_error')->orWhere('email_error', '');
+                    })
+                    ->count()
+                : 0;
+
             $data = [
                 'election' => $election,
                 'total_voters' => $election->total_voters ?? 0,
@@ -500,6 +484,7 @@ class ElectionController extends Controller
                     ? round(($voted_count / $election->total_voters) * 100, 2) 
                     : 0,
                 'voters_email_failed_count' => $votersEmailFailedCount,
+                'voters_email_pending_count' => $votersEmailPendingCount,
             ];
             
             return view('elections.show', compact('data'));

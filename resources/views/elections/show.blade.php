@@ -81,6 +81,20 @@
                 </form>
             @endif
         </div>
+        @if($data['election']->isActivated() && ($data['voters_email_pending_count'] ?? 0) > 0)
+        <div class="mt-4 p-4 rounded-xl bg-primary-50 border-2 border-primary-200 text-center">
+            <p class="text-primary-900 font-medium mb-3">
+                <strong>{{ $data['voters_email_pending_count'] }}</strong> votant(s) n’ont pas encore reçu leur lien de vote.
+            </p>
+            <form action="{{ route('elections.renvoyer-liens', $data['election']) }}" method="POST" class="inline"
+                  data-confirm-message="Envoyer le lien de vote à {{ $data['voters_email_pending_count'] }} votant(s) ?">
+                @csrf
+                <button type="submit" class="btn btn-primary">
+                    Envoyer les liens aux votants ({{ $data['voters_email_pending_count'] }})
+                </button>
+            </form>
+        </div>
+        @endif
         @if($data['election']->isActivated() && ($data['voters_email_failed_count'] ?? 0) > 0)
         <div class="mt-4 p-4 rounded-xl bg-amber-50 border-2 border-amber-200 text-center">
             <p class="text-amber-800 text-sm">Certains votants n'ont pas reçu leur lien (adresse invalide ou erreur d'envoi). Corrigez les emails dans la liste des votants ou renvoyez après correction côté serveur.</p>
