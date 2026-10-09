@@ -175,6 +175,31 @@ class ElectionController extends Controller
         return Excel::download(new VotantsTemplateExport(), 'modele_votants.xlsx');
     }
 
+    /**
+     * Envoie le lien de vote à chaque votant et note le résultat sur le votant.
+     * Retourne le nombre d'envois réussis ; les échecs restent rattrapables
+     * via « Renvoyer les liens ».
+     */
+    private function sendVotingLinksTo($voters): int
+    {
+        $sent = 0;
+        foreach ($voters as $voter) {
+            try {
+                $this->emailService->sendVotingLink($voter);
+                $voter->email_sent_at = now();
+                $voter->email_error = null;
+                $sent++;
+            } catch (\Exception $e) {
+                \Log::warning("Erreur envoi email votant {$voter->email}: " . $e->getMessage());
+                $voter->email_sent_at = null;
+                $voter->email_error = $e->getMessage();
+            }
+            $voter->save();
+        }
+
+        return $sent;
+    }
+
     public function store(Request $request)
     {
         // Convertir les dates du format JJ/MM/AAAA (ex. 23/02/2026) vers Y-m-d
@@ -339,9 +364,29 @@ class ElectionController extends Controller
             $election = $result['election'];
             $election->load('voters');
 
-            // Ne pas envoyer les emails ici : ils seront envoyés après paiement (activation)
             $publicRegistrationUrl = URL::signedRoute('votants.inscription', $election);
-            if (($request->input('voters_source', 'link') === 'excel') && ($result['votersCreated'] ?? 0) > 0) {
+            $importedFromExcel = ($request->input('voters_source', 'link') === 'excel') && ($result['votersCreated'] ?? 0) > 0;
+
+            // Paiement désactivé : l'élection est active d'office, les liens partent tout de suite.
+            if (!config('billing.enabled')) {
+                if ($importedFromExcel) {
+                    $sent = $this->sendVotingLinksTo($election->voters);
+                    $election->emails_sent_at = now();
+                    $election->save();
+
+                    $failed = $result['votersCreated'] - $sent;
+                    $successMessage = 'Élection créée. ' . $result['votersCreated'] . ' votant(s) importé(s), '
+                        . $sent . ' lien(s) de vote envoyé(s).'
+                        . ($failed > 0 ? ' ' . $failed . ' envoi(s) en échec : utilisez le bouton « Renvoyer les liens ».' : '');
+                } else {
+                    $successMessage = 'Élection créée. Partagez le lien d\'inscription des votants : ' . $publicRegistrationUrl . '.';
+                }
+
+                return redirect()->route('elections.voir', $election)->with('success', $successMessage);
+            }
+
+            // Ne pas envoyer les emails ici : ils seront envoyés après paiement (activation)
+            if ($importedFromExcel) {
                 $successMessage = 'Élection créée. ' . $result['votersCreated'] . ' votant(s) importé(s). Après paiement, les liens seront envoyés automatiquement.';
             } else {
                 $successMessage = 'Élection créée. Après paiement, partagez le lien d\'inscription des votants : ' . $publicRegistrationUrl . '.';

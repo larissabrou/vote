@@ -109,6 +109,11 @@ class Election extends Model
     /** L'élection est activée (payée) : les votants ont reçu les emails et le vote est autorisé. */
     public function isActivated(): bool
     {
+        // Paiement désactivé : toute élection est active d'office.
+        if (!config('billing.enabled')) {
+            return true;
+        }
+
         // Source de vérité: un paiement complété active l'élection.
         // emails_sent_at est conservé pour compatibilité avec les anciennes données.
         return $this->payments()
@@ -122,7 +127,9 @@ class Election extends Model
         if (!$this->isActivated()) {
             return true;
         }
-        if ($this->hasEnded()) {
+        // Sans paiement, une élection déjà passée reste modifiable tant que personne n'a voté :
+        // sinon une simple erreur de date la rendrait définitivement inutilisable.
+        if ($this->hasEnded() && config('billing.enabled')) {
             return false;
         }
         return $this->voted_count === 0;

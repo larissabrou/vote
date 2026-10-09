@@ -21,10 +21,31 @@ class PaymentController extends Controller
     }
 
     /**
+     * Quand le paiement est désactivé, aucune page de paiement ne doit être
+     * atteignable. Retourne une redirection à renvoyer telle quelle, sinon null.
+     */
+    private function billingDisabled(?Election $election = null)
+    {
+        if (config('billing.enabled')) {
+            return null;
+        }
+
+        $redirect = $election
+            ? redirect()->route('elections.voir', $election)
+            : redirect()->route('elections.liste');
+
+        return $redirect->with('info', 'Le paiement est désactivé : les élections sont actives sans paiement.');
+    }
+
+    /**
      * Affiche le formulaire de paiement pour activer une élection (envoyer les emails aux votants).
      */
     public function showActivateElection(Election $election)
     {
+        if ($redirect = $this->billingDisabled($election)) {
+            return $redirect;
+        }
+
         if (Auth::guard('web')->id() !== $election->user_id) {
             return redirect()->route('elections.liste')->with('error', 'Accès non autorisé.');
         }
@@ -68,6 +89,10 @@ class PaymentController extends Controller
      */
     public function initiate(Request $request)
     {
+        if ($redirect = $this->billingDisabled()) {
+            return $redirect;
+        }
+
         Log::info('[Payment] initiate: requête reçue', [
             'election_id' => $request->election_id,
             'payment_method' => $request->payment_method,
@@ -306,6 +331,10 @@ class PaymentController extends Controller
      */
     public function confirm(Payment $payment)
     {
+        if ($redirect = $this->billingDisabled($payment->election)) {
+            return $redirect;
+        }
+
         if (!Auth::guard('web')->check()) {
             return redirect()->route('administration.connexion')->with('error', 'Accès non autorisé.');
         }
@@ -327,6 +356,10 @@ class PaymentController extends Controller
      */
     public function confirmSimulate(Payment $payment)
     {
+        if ($redirect = $this->billingDisabled($payment->election)) {
+            return $redirect;
+        }
+
         if (!Auth::guard('web')->check()) {
             return redirect()->route('administration.connexion')->with('error', 'Accès non autorisé.');
         }
